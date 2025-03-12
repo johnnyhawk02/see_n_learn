@@ -36,20 +36,23 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateMixin {
+class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late List<PicCard> allCards;
   late List<PicCard> displayCards;
   late PicCard dragCard;
   bool isCorrect = false;
   bool showFeedback = false;
   
-  // Add animation controller for smooth transitions
+  // Add animation controllers for smooth transitions and feedback
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
-
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+  
   @override
   void initState() {
     super.initState();
+    // Scale animation for drag feedback
     _controller = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -58,13 +61,60 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
     
+    // Pulse animation to indicate card is ready to drag
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.08).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    
+    // Make the pulse animation repeat
+    _pulseController.repeat(reverse: true);
+    
+    // Include all available images from assets
     allCards = [
       PicCard(imagePath: 'assets/images/word-images/apple.jpeg', name: 'Apple'),
+      PicCard(imagePath: 'assets/images/word-images/baby.jpeg', name: 'Baby'),
+      PicCard(imagePath: 'assets/images/word-images/bag.jpeg', name: 'Bag'),
+      PicCard(imagePath: 'assets/images/word-images/ball.jpeg', name: 'Ball'),
       PicCard(imagePath: 'assets/images/word-images/banana.jpeg', name: 'Banana'),
+      PicCard(imagePath: 'assets/images/word-images/bath.jpeg', name: 'Bath'),
+      PicCard(imagePath: 'assets/images/word-images/bear.jpeg', name: 'Bear'),
+      PicCard(imagePath: 'assets/images/word-images/bed.jpeg', name: 'Bed'),
+      PicCard(imagePath: 'assets/images/word-images/bird.jpeg', name: 'Bird'),
+      PicCard(imagePath: 'assets/images/word-images/biscuit.jpeg', name: 'Biscuit'),
+      PicCard(imagePath: 'assets/images/word-images/blocks.jpeg', name: 'Blocks'),
+      PicCard(imagePath: 'assets/images/word-images/book.jpeg', name: 'Book'),
+      PicCard(imagePath: 'assets/images/word-images/brush.jpeg', name: 'Brush'),
+      PicCard(imagePath: 'assets/images/word-images/car.jpeg', name: 'Car'),
       PicCard(imagePath: 'assets/images/word-images/cat.jpeg', name: 'Cat'),
+      PicCard(imagePath: 'assets/images/word-images/chair.jpeg', name: 'Chair'),
+      PicCard(imagePath: 'assets/images/word-images/coat.jpeg', name: 'Coat'),
+      PicCard(imagePath: 'assets/images/word-images/cow.jpeg', name: 'Cow'),
+      PicCard(imagePath: 'assets/images/word-images/cup.jpeg', name: 'Cup'),
+      PicCard(imagePath: 'assets/images/word-images/daddy.jpeg', name: 'Daddy'),
       PicCard(imagePath: 'assets/images/word-images/dog.jpeg', name: 'Dog'),
+      PicCard(imagePath: 'assets/images/word-images/doll.jpeg', name: 'Doll'),
+      PicCard(imagePath: 'assets/images/word-images/drink.jpeg', name: 'Drink'),
       PicCard(imagePath: 'assets/images/word-images/duck.jpeg', name: 'Duck'),
+      PicCard(imagePath: 'assets/images/word-images/eyes.jpeg', name: 'Eyes'),
       PicCard(imagePath: 'assets/images/word-images/fish.jpeg', name: 'Fish'),
+      PicCard(imagePath: 'assets/images/word-images/flower.jpeg', name: 'Flower'),
+      PicCard(imagePath: 'assets/images/word-images/hair.jpeg', name: 'Hair'),
+      PicCard(imagePath: 'assets/images/word-images/hat.jpeg', name: 'Hat'),
+      PicCard(imagePath: 'assets/images/word-images/keys.jpeg', name: 'Keys'),
+      PicCard(imagePath: 'assets/images/word-images/mouth.jpeg', name: 'Mouth'),
+      PicCard(imagePath: 'assets/images/word-images/mummy.jpeg', name: 'Mummy'),
+      PicCard(imagePath: 'assets/images/word-images/nose.jpeg', name: 'Nose'),
+      PicCard(imagePath: 'assets/images/word-images/phone.jpeg', name: 'Phone'),
+      PicCard(imagePath: 'assets/images/word-images/pig.jpeg', name: 'Pig'),
+      PicCard(imagePath: 'assets/images/word-images/sheep.jpeg', name: 'Sheep'),
+      PicCard(imagePath: 'assets/images/word-images/shoes.jpeg', name: 'Shoes'),
+      PicCard(imagePath: 'assets/images/word-images/socks.jpeg', name: 'Socks'),
+      PicCard(imagePath: 'assets/images/word-images/spoon.jpeg', name: 'Spoon'),
+      PicCard(imagePath: 'assets/images/word-images/table.jpeg', name: 'Table'),
     ];
     _shuffleCards();
   }
@@ -72,6 +122,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
   @override
   void dispose() {
     _controller.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -106,8 +157,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     }
   }
 
-  Widget _buildCard(PicCard card, double size, {bool isDraggable = false}) {
-    return Container(
+  Widget _buildCard(PicCard card, double size, {bool isDraggable = false, bool withPulse = false}) {
+    final cardWidget = Container(
       width: size,
       height: size,
       decoration: BoxDecoration(
@@ -128,6 +179,44 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         ),
       ),
     );
+
+    // If this card is meant to be dragged, add a visual indicator
+    if (withPulse) {
+      return Stack(
+        children: [
+          // The card itself
+          cardWidget,
+          
+          // Animated arrow indicator
+          Positioned(
+            right: 8,
+            top: 8,
+            child: AnimatedBuilder(
+              animation: _pulseAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _pulseAnimation.value * 0.8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withOpacity(0.7),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.touch_app,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
+    }
+
+    return cardWidget;
   }
 
   // Build a deck of cards visual to represent where cards are dealt from
@@ -250,12 +339,23 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                 children: [
                   Padding(
                     padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Text(
-                      'Drag this card to its match above',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.touch_app_outlined, 
+                          color: Colors.blue,
+                          size: 24,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Tap and drag card', // Updated instructions
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
                     ),
                   ),
                   SingleChildScrollView(
@@ -266,20 +366,43 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                         // Card deck visual
                         _buildDeckVisual(cardSize * 0.8),
                         const SizedBox(width: 20),
-                        // Draggable card
-                        LongPressDraggable<PicCard>(
+                        // Replace LongPressDraggable with Draggable for easier interaction
+                        Draggable<PicCard>(
                           data: dragCard,
-                          delay: const Duration(milliseconds: 50),
-                          feedback: _buildCard(dragCard, cardSize),
+                          feedback: Material(
+                            color: Colors.transparent,
+                            child: _buildCard(dragCard, cardSize),
+                            elevation: 8.0,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                           childWhenDragging: Opacity(
                             opacity: 0.3,
                             child: _buildCard(dragCard, cardSize),
                           ),
                           onDragStarted: () => _controller.forward(),
                           onDragEnd: (_) => _controller.reverse(),
-                          child: ScaleTransition(
-                            scale: _scaleAnimation,
-                            child: _buildCard(dragCard, cardSize),
+                          // Add drag physics for more natural feel
+                          maxSimultaneousDrags: 1,
+                          dragAnchorStrategy: (draggable, context, position) {
+                            return Offset(cardSize / 2, cardSize / 2);
+                          },
+                          // Apply a bounce effect when tapped
+                          child: GestureDetector(
+                            onTap: () {
+                              // Add a small bounce animation when tapped
+                              _pulseController.stop();
+                              _pulseController.reset();
+                              _pulseController.repeat(reverse: true);
+                            },
+                            child: AnimatedBuilder(
+                              animation: _pulseAnimation,
+                              builder: (context, child) {
+                                return Transform.scale(
+                                  scale: _pulseAnimation.value,
+                                  child: _buildCard(dragCard, cardSize, withPulse: true),
+                                );
+                              },
+                            ),
                           ),
                         ),
                       ],
