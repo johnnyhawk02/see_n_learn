@@ -11,6 +11,3 @@ flutter doctor
 
 # Build web app
 flutter build web --release
-
-# Copy files to the Netlify publish directory
-cp -R build/web/. build/web/
