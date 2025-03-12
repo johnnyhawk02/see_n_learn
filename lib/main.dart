@@ -16,6 +16,15 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
+        primarySwatch: Colors.blue,
+        brightness: Brightness.light,
+        textTheme: TextTheme(
+          displayLarge: TextStyle(color: Colors.blue, fontSize: 32, fontWeight: FontWeight.bold),
+          displayMedium: TextStyle(color: Colors.green, fontSize: 28, fontWeight: FontWeight.bold),
+          displaySmall: TextStyle(color: Colors.orange, fontSize: 24, fontWeight: FontWeight.bold),
+          bodyLarge: TextStyle(color: Colors.purple, fontSize: 18),
+          bodyMedium: TextStyle(color: Colors.red, fontSize: 16),
+        ),
       ),
       home: const GameScreen(),
     );
@@ -158,35 +167,61 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildCard(PicCard card, double size, {bool isDraggable = false, bool withPulse = false}) {
-    final cardWidget = Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    final cardContent = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Image.asset(
-          card.imagePath,
-          fit: BoxFit.cover,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Image.asset(
+              card.imagePath,
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            card.name,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ),
+      ],
     );
 
     // If this card is meant to be dragged, add a visual indicator
     if (withPulse) {
       return Stack(
         children: [
-          // The card itself
-          cardWidget,
-          
+          cardContent,
           // Animated arrow indicator
           Positioned(
             right: 8,
@@ -216,130 +251,132 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       );
     }
 
-    return cardWidget;
-  }
-
-  // Build a deck of cards visual to represent where cards are dealt from
-  Widget _buildDeckVisual(double size) {
-    return Container(
-      width: size + 10,
-      height: size + 10,
-      child: Stack(
-        children: [
-          // Multiple card backs stacked to create deck illusion
-          for (int i = 3; i >= 0; i--)
-            Positioned(
-              top: i * 2.0,
-              left: i * 2.0,
-              child: Container(
-                width: size - i * 1.0,
-                height: size - i * 1.0,
-                decoration: BoxDecoration(
-                  color: Colors.blue[50 + i * 50],
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.blue.shade200),
-                  boxShadow: i == 0 
-                    ? [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 2,
-                          offset: const Offset(0, 1),
-                        ),
-                      ]
-                    : [],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
+    return cardContent;
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final isLandscape = size.width > size.height;
-    // Adjust card size to prevent overflow
-    final cardSize = isLandscape ? 
-      size.height * 0.25 : // Slightly smaller in landscape
-      size.width * 0.25;   // Slightly smaller in portrait
+    final cardSize = isLandscape ? size.height * 0.25 : size.width * 0.25;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        title: const Text(
-          'See & Learn',
-          style: TextStyle(fontWeight: FontWeight.bold),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.blue[100]!,
+              Colors.purple[50]!,
+            ],
+          ),
         ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top section with target cards
-            Expanded(
-              flex: 3,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    return SingleChildScrollView(
-                      child: Center(
-                        child: Wrap(
-                          spacing: 16,
-                          runSpacing: 16,
-                          alignment: WrapAlignment.center,
-                          children: displayCards.map((card) {
-                            return DragTarget<PicCard>(
-                              builder: (context, candidateData, rejectedData) {
-                                final isTargeted = candidateData.isNotEmpty;
-                                return AnimatedScale(
-                                  scale: isTargeted ? 1.05 : 1.0,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: _buildCard(card, cardSize),
-                                );
-                              },
-                              onWillAccept: (data) => true,
-                              onAccept: (data) {
-                                _handleDragEnd(data.name == card.name);
-                              },
-                            );
-                          }).toList(),
-                        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // App Bar
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.school, size: 32, color: Colors.blue),
+                    const SizedBox(width: 12),
+                    Text(
+                      'See & Learn',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[800],
                       ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
               ),
-            ),
 
-            // Feedback section with animated opacity
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: showFeedback
-                  ? Container(
-                      key: ValueKey<bool>(isCorrect),
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: Text(
-                        isCorrect ? 'Great job! 🎉' : 'Try again! 💪',
-                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: isCorrect ? Colors.green : Colors.orange,
-                          fontWeight: FontWeight.bold,
+              // Top section with target cards
+              Expanded(
+                flex: 3,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return SingleChildScrollView(
+                        child: Center(
+                          child: Wrap(
+                            spacing: 24,
+                            runSpacing: 24,
+                            alignment: WrapAlignment.center,
+                            children: displayCards.map((card) {
+                              return DragTarget<PicCard>(
+                                builder: (context, candidateData, rejectedData) {
+                                  final isTargeted = candidateData.isNotEmpty;
+                                  return AnimatedScale(
+                                    scale: isTargeted ? 1.05 : 1.0,
+                                    duration: const Duration(milliseconds: 200),
+                                    child: _buildCard(card, cardSize),
+                                  );
+                                },
+                                onWillAccept: (data) => true,
+                                onAccept: (data) {
+                                  _handleDragEnd(data.name == card.name);
+                                },
+                              );
+                            }).toList(),
+                          ),
                         ),
-                      ),
-                    )
-                  : const SizedBox(height: 48),
-            ),
+                      );
+                    },
+                  ),
+                ),
+              ),
 
-            // Bottom section with draggable card and deck
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Row(
+              // Feedback section with animated opacity
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: showFeedback
+                    ? Container(
+                        key: ValueKey<bool>(isCorrect),
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        child: Text(
+                          isCorrect ? 'Great job! 🎉' : 'Try again! 💪',
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                            color: isCorrect ? Colors.green[600] : Colors.orange[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    : const SizedBox(height: 64),
+              ),
+
+              // Bottom section with draggable card
+              Container(
+                margin: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.all(24.0),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.9),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const Icon(
@@ -349,75 +386,69 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Tap and drag card', // Updated instructions
+                          'Tap and drag card',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w500,
+                            color: Colors.blue[700],
                           ),
                           textAlign: TextAlign.center,
                         ),
                       ],
                     ),
-                  ),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Card deck visual
-                        _buildDeckVisual(cardSize * 0.8),
-                        const SizedBox(width: 20),
-                        // Replace LongPressDraggable with Draggable for easier interaction
-                        Draggable<PicCard>(
-                          data: dragCard,
-                          feedback: Material(
-                            color: Colors.transparent,
-                            child: _buildCard(dragCard, cardSize),
-                            elevation: 8.0,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          childWhenDragging: Opacity(
-                            opacity: 0.3,
-                            child: _buildCard(dragCard, cardSize),
-                          ),
-                          onDragStarted: () => _controller.forward(),
-                          onDragEnd: (_) => _controller.reverse(),
-                          // Add drag physics for more natural feel
-                          maxSimultaneousDrags: 1,
-                          dragAnchorStrategy: (draggable, context, position) {
-                            return Offset(cardSize / 2, cardSize / 2);
+                    const SizedBox(height: 16),
+                    Draggable<PicCard>(
+                      data: dragCard,
+                      feedback: Material(
+                        color: Colors.transparent,
+                        child: _buildCard(dragCard, cardSize),
+                        elevation: 8.0,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      childWhenDragging: Opacity(
+                        opacity: 0.3,
+                        child: _buildCard(dragCard, cardSize),
+                      ),
+                      onDragStarted: () => _controller.forward(),
+                      onDragEnd: (_) => _controller.reverse(),
+                      maxSimultaneousDrags: 1,
+                      dragAnchorStrategy: (draggable, context, position) {
+                        return Offset(cardSize / 2, cardSize / 2);
+                      },
+                      child: GestureDetector(
+                        onTap: () {
+                          _pulseController.stop();
+                          _pulseController.reset();
+                          _pulseController.repeat(reverse: true);
+                        },
+                        child: AnimatedBuilder(
+                          animation: _pulseAnimation,
+                          builder: (context, child) {
+                            return Transform.scale(
+                              scale: _pulseAnimation.value,
+                              child: _buildCard(dragCard, cardSize, withPulse: true),
+                            );
                           },
-                          // Apply a bounce effect when tapped
-                          child: GestureDetector(
-                            onTap: () {
-                              // Add a small bounce animation when tapped
-                              _pulseController.stop();
-                              _pulseController.reset();
-                              _pulseController.repeat(reverse: true);
-                            },
-                            child: AnimatedBuilder(
-                              animation: _pulseAnimation,
-                              builder: (context, child) {
-                                return Transform.scale(
-                                  scale: _pulseAnimation.value,
-                                  child: _buildCard(dragCard, cardSize, withPulse: true),
-                                );
-                              },
-                            ),
-                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _shuffleCards,
-        icon: const Icon(Icons.shuffle),
-        label: const Text('Shuffle'),
+        backgroundColor: Colors.blue[600],
+        icon: const Icon(Icons.shuffle, color: Colors.white),
+        label: const Text(
+          'Shuffle',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ),
     );
   }
